@@ -39,6 +39,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 }
             ],
             "model": get_model(),
+            "tools": [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "ReadFile",
+                        "description": "Read the contents of a file",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "file_path": {
+                                    "type": "string",
+                                    "description": "Path to the file to read"
+                                }
+                            },
+                            "required": ["file_path"]
+                        }
+                    }
+                }
+            ]
         }))
         .await?;
 
