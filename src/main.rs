@@ -72,6 +72,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
 
         if let Some(tool_calls) = response["choices"][0]["message"]["tool_calls"].as_array() {
+            messages.push(json!({
+                "role": "assistant",
+                "content": response["choices"][0]["message"]["content"].clone(),
+                "tool_calls": tool_calls
+            }));
+
             for tool_call in tool_calls {
                 eprintln!(
                     "processing tool call: {}",
@@ -80,12 +86,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let name = tool_call["function"]["name"].as_str().unwrap();
                 let arguments: Value =
                     serde_json::from_str(tool_call["function"]["arguments"].as_str().unwrap())?;
+                let tool_call_id = tool_call["id"].as_str().unwrap();
 
                 if name == "ReadFile" {
                     let file_path = arguments["file_path"].as_str().unwrap();
                     let contents = std::fs::read_to_string(file_path)?;
                     messages.push(json!({
                         "role": "tool",
+                        "tool_call_id": tool_call_id,
                         "name": name,
                         "content": contents
                     }));
