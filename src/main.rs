@@ -61,6 +61,20 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }))
         .await?;
 
+    if let Some(tool_calls) = response["choices"][0]["message"]["tool_calls"].as_array() {
+        for tool_call in tool_calls {
+            let name = tool_call["function"]["name"].as_str().unwrap();
+            let arguments: Value =
+                serde_json::from_str(tool_call["function"]["arguments"].as_str().unwrap())?;
+
+            if name == "ReadFile" {
+                let file_path = arguments["file_path"].as_str().unwrap();
+                let contents = std::fs::read_to_string(file_path)?;
+                print!("{}", contents);
+            }
+        }
+    }
+
     if let Some(content) = response["choices"][0]["message"]["content"].as_str() {
         println!("{}", content);
     }
