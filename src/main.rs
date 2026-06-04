@@ -28,55 +28,82 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let client = Client::with_config(config);
 
-    #[allow(unused_variables)]
-    let response: Value = client
-        .chat()
-        .create_byot(json!({
-            "messages": [
-                {
-                    "role": "user",
-                    "content": args.prompt
-                }
-            ],
-            "model": get_model(),
-            "tools": [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "ReadFile",
-                        "description": "Read the contents of a file",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "file_path": {
-                                    "type": "string",
-                                    "description": "Path to the file to read"
-                                }
-                            },
-                            "required": ["file_path"]
+    let mut messages = [json!({
+        "role": "user",
+        "content": args.prompt
+    })]
+    .to_vec();
+
+    loop {
+        eprintln!(
+            "entering loop with messages: {}",
+            serde_json::to_string_pretty(&messages)?
+        );
+        let response: Value = client
+            .chat()
+            .create_byot(json!({
+                "messages": messages,
+                "model": get_model(),
+                "tools": [
+                    {
+                        "type": "function",
+                        "function": {
+                            "name": "ReadFile",
+                            "description": "Read the contents of a file",
+                            "parameters": {
+                                "type": "object",
+                                "properties": {
+                                    "file_path": {
+                                        "type": "string",
+                                        "description": "Path to the file to read"
+                                    }
+                                },
+                                "required": ["file_path"]
+                            }
                         }
                     }
+                ]
+            }))
+            .await?;
+
+        eprintln!(
+            "received response: {}",
+            serde_json::to_string_pretty(&response)?
+        );
+
+        if let Some(tool_calls) = response["choices"][0]["message"]["tool_calls"].as_array() {
+            for tool_call in tool_calls {
+                eprintln!(
+                    "processing tool call: {}",
+                    serde_json::to_string_pretty(tool_call)?
+                );
+                let name = tool_call["function"]["name"].as_str().unwrap();
+                let arguments: Value =
+                    serde_json::from_str(tool_call["function"]["arguments"].as_str().unwrap())?;
+
+                if name == "ReadFile" {
+                    let file_path = arguments["file_path"].as_str().unwrap();
+                    let contents = std::fs::read_to_string(file_path)?;
+                    messages.push(json!({
+                        "role": "tool",
+                        "name": name,
+                        "content": contents
+                    }));
                 }
-            ]
-        }))
-        .await?;
-
-    if let Some(tool_calls) = response["choices"][0]["message"]["tool_calls"].as_array() {
-        for tool_call in tool_calls {
-            let name = tool_call["function"]["name"].as_str().unwrap();
-            let arguments: Value =
-                serde_json::from_str(tool_call["function"]["arguments"].as_str().unwrap())?;
-
-            if name == "ReadFile" {
-                let file_path = arguments["file_path"].as_str().unwrap();
-                let contents = std::fs::read_to_string(file_path)?;
-                print!("{}", contents);
             }
+        } else if let Some(content) = response["choices"][0]["message"]["content"].as_str() {
+            eprintln!("no toolcall");
+            eprintln!("assistant response content: {}", content);
+            messages.push(json!({
+                "role": "assistant",
+                "content": content
+            }));
+            println!("{}", content);
+            break;
+        } else {
+            eprintln!("Unexpected response format: {}", response);
+            break;
         }
-    }
-
-    if let Some(content) = response["choices"][0]["message"]["content"].as_str() {
-        println!("{}", content);
     }
 
     Ok(())
