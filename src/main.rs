@@ -83,7 +83,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
                         }
                     }
+                    },
+                    {
+                    "type": "function",
+                    "function": {
+                        "name": "Bash",
+                        "description": "Execute a shell command",
+                        "parameters": {
+                            "type": "object",
+                            "required": ["command"],
+                            "properties": {
+                                "command": {
+                                    "type": "string",
+                                    "description": "The command to execute"
+                                }
+                            }
+                        }
                     }
+                }
                 ]
             }))
             .await?;
@@ -130,6 +147,22 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         "tool_call_id": tool_call_id,
                         "name": name,
                         "content": format!("Wrote to file {}", file_path)
+                    }));
+                }
+
+                if name == "Bash" {
+                    let command = arguments["command"].as_str().unwrap();
+                    let output = process::Command::new("sh")
+                        .arg("-c")
+                        .arg(command)
+                        .output()?;
+                    let stdout = String::from_utf8_lossy(&output.stdout);
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    messages.push(json!({
+                        "role": "tool",
+                        "tool_call_id": tool_call_id,
+                        "name": name,
+                        "content": format!("stdout: {}\nstderr: {}", stdout, stderr)
                     }));
                 }
             }
