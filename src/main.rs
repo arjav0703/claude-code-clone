@@ -46,21 +46,43 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "model": get_model(),
                 "tools": [
                     {
-                        "type": "function",
-                        "function": {
-                            "name": "ReadFile",
-                            "description": "Read the contents of a file",
-                            "parameters": {
-                                "type": "object",
-                                "properties": {
-                                    "file_path": {
-                                        "type": "string",
-                                        "description": "Path to the file to read"
-                                    }
-                                },
-                                "required": ["file_path"]
-                            }
+                    "type": "function",
+                    "function": {
+                        "name": "ReadFile",
+                        "description": "Read the contents of a file",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "file_path": {
+                                    "type": "string",
+                                    "description": "Path to the file to read"
+                                }
+                            },
+                            "required": ["file_path"]
                         }
+                    }
+                    },
+                    {
+                    "type": "function",
+                    "function": {
+                        "name": "WriteFile",
+                        "description": "Write content to a file",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "file_path": {
+                                "type": "string",
+                                "description": "The path of the file to write to"
+                                },
+                                "content": {
+                                "type": "string",
+                                "description": "The content to write to the file"
+                                }
+                            },
+                            "required": ["file_path", "content"],
+
+                        }
+                    }
                     }
                 ]
             }))
@@ -96,6 +118,18 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                         "tool_call_id": tool_call_id,
                         "name": name,
                         "content": contents
+                    }));
+                }
+
+                if name == "WriteFile" {
+                    let file_path = arguments["file_path"].as_str().unwrap();
+                    let content = arguments["content"].as_str().unwrap();
+                    std::fs::write(file_path, content)?;
+                    messages.push(json!({
+                        "role": "tool",
+                        "tool_call_id": tool_call_id,
+                        "name": name,
+                        "content": format!("Wrote to file {}", file_path)
                     }));
                 }
             }
