@@ -3,6 +3,10 @@ use clap::Parser;
 use serde_json::{Value, json};
 use std::{env, process};
 
+use crate::util::{Model, Role, ToolSpec};
+
+mod util;
+
 #[derive(Parser)]
 #[command(author, version, about)]
 struct Args {
@@ -29,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::with_config(config);
 
     let mut messages = [json!({
-        "role": "user",
+        "role": Role::user,
         "content": args.prompt
     })]
     .to_vec();
@@ -43,67 +47,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .chat()
             .create_byot(json!({
                 "messages": messages,
-                "model": get_model(),
+                "model": Model::from_env().name,
                 "tools": [
-                    {
-                    "type": "function",
-                    "function": {
-                        "name": "ReadFile",
-                        "description": "Read the contents of a file",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "file_path": {
-                                    "type": "string",
-                                    "description": "Path to the file to read"
-                                }
-                            },
-                            "required": ["file_path"]
-                        }
-                    }
-                    },
-                    {
-                    "type": "function",
-                    "function": {
-                        "name": "WriteFile",
-                        "description": "Write content to a file",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "file_path": {
-                                "type": "string",
-                                "description": "The path of the file to write to"
-                                },
-                                "content": {
-                                "type": "string",
-                                "description": "The content to write to the file"
-                                }
-                            },
-                            "required": ["file_path", "content"],
-
-                        }
-                    }
-                    },
-                    {
-                    "type": "function",
-                    "function": {
-                        "name": "Bash",
-                        "description": "Execute a shell command",
-                        "parameters": {
-                            "type": "object",
-                            "required": ["command"],
-                            "properties": {
-                                "command": {
-                                    "type": "string",
-                                    "description": "The command to execute"
-                                }
-                            }
-                        }
-                    }
-                }
+                    json!({
+                        "type": "function",
+                        "function": ToolSpec::read_file()
+                    }),
+                    json!({
+                        "type": "function",
+                        "function": ToolSpec::write_file()
+                    }),
+                    json!({
+                        "type": "function",
+                        "function": ToolSpec::bash()
+                    })
                 ]
             }))
             .await?;
+        eprintln!("request fulfilled");
 
         eprintln!(
             "received response: {}",
@@ -112,7 +73,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         if let Some(tool_calls) = response["choices"][0]["message"]["tool_calls"].as_array() {
             messages.push(json!({
-                "role": "assistant",
+                "role": Role::assistant,
                 "content": response["choices"][0]["message"]["content"].clone(),
                 "tool_calls": tool_calls
             }));
@@ -159,7 +120,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let stdout = String::from_utf8_lossy(&output.stdout);
                     let stderr = String::from_utf8_lossy(&output.stderr);
                     messages.push(json!({
-                        "role": "tool",
+                        "role": Role::tool,
                         "tool_call_id": tool_call_id,
                         "name": name,
                         "content": format!("stdout: {}\nstderr: {}", stdout, stderr)
@@ -170,7 +131,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("no toolcall");
             eprintln!("assistant response content: {}", content);
             messages.push(json!({
-                "role": "assistant",
+                "role": Role::assistant,
                 "content": content
             }));
             println!("{}", content);
@@ -182,8 +143,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
-}
-
-fn get_model() -> String {
-    env::var("OPENROUTER_MODEL").unwrap_or_else(|_| "anthropic/claude-haiku-4.5".to_string())
 }
