@@ -5,7 +5,10 @@ use std::{env, process};
 
 use crate::util::{Model, Role, ToolSpec};
 
+mod tools;
 mod util;
+
+use tools::{handle_bash, handle_read_file, handle_write_file};
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -88,44 +91,21 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                     serde_json::from_str(tool_call["function"]["arguments"].as_str().unwrap())?;
                 let tool_call_id = tool_call["id"].as_str().unwrap();
 
-                if name == "ReadFile" {
-                    let file_path = arguments["file_path"].as_str().unwrap();
-                    let contents = std::fs::read_to_string(file_path)?;
-                    messages.push(json!({
-                        "role": "tool",
-                        "tool_call_id": tool_call_id,
-                        "name": name,
-                        "content": contents
-                    }));
-                }
-
-                if name == "WriteFile" {
-                    let file_path = arguments["file_path"].as_str().unwrap();
-                    let content = arguments["content"].as_str().unwrap();
-                    std::fs::write(file_path, content)?;
-                    messages.push(json!({
-                        "role": "tool",
-                        "tool_call_id": tool_call_id,
-                        "name": name,
-                        "content": format!("Wrote to file {}", file_path)
-                    }));
-                }
-
-                if name == "Bash" {
-                    let command = arguments["command"].as_str().unwrap();
-                    let output = process::Command::new("sh")
-                        .arg("-c")
-                        .arg(command)
-                        .output()?;
-                    let stdout = String::from_utf8_lossy(&output.stdout);
-                    let stderr = String::from_utf8_lossy(&output.stderr);
-                    messages.push(json!({
-                        "role": Role::tool,
-                        "tool_call_id": tool_call_id,
-                        "name": name,
-                        "content": format!("stdout: {}\nstderr: {}", stdout, stderr)
-                    }));
-                }
+                let tool_response = match name {
+                    "ReadFile" => handle_read_file(&arguments, tool_call_id, name),
+                    "WriteFile" => handle_write_file(&arguments, tool_call_id, name),
+                    "Bash" => handle_bash(&arguments, tool_call_id, name),
+                    other => {
+                        eprintln!("Unknown toolcall name: {}", other);
+                        Ok(json!({
+                            "role": "tool",
+                            "tool_call_id": tool_call_id,
+                            "name": name,
+                            "content": format!("Unknown toolcall: {}", other)
+                        }))
+                    }
+                }?;
+                messages.push(tool_response);
             }
         } else if let Some(content) = response["choices"][0]["message"]["content"].as_str() {
             eprintln!("no toolcall");
