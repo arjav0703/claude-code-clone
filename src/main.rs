@@ -8,6 +8,7 @@ use crate::util::{Model, Role, ToolSpec};
 mod tools;
 mod util;
 
+use ratatui::{DefaultTerminal, Frame};
 use tools::{handle_bash, handle_read_file, handle_write_file};
 
 #[derive(Parser)]
@@ -19,6 +20,7 @@ struct Args {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    color_eyre::install()?;
     let args = Args::parse();
 
     let base_url = env::var("OPENROUTER_BASE_URL")
