@@ -12,3 +12,5 @@ target/
 .env
 
 run.sh
+
+log.txt
