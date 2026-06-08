@@ -10,7 +10,7 @@ macro_rules! log {
         let mut file = File::options()
         .append(true)
         .create(true)
-        .open("log.txt")?;
+        .open("log.txt").expect("Unable to open log file");
 
         file.write_all( format!("{} - {}\n", datetime.format("%Y-%m-%d %H:%M:%S"), format!($($arg)*)).as_bytes()).expect("Unable to write to log file");
     })

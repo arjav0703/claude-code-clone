@@ -7,7 +7,10 @@ use std::{
     process,
 };
 
-use crate::tools::{handle_bash, handle_read_file, handle_write_file};
+use crate::{
+    log,
+    tools::{handle_bash, handle_read_file, handle_write_file},
+};
 
 #[derive(Parser)]
 #[command(author, version, about)]
@@ -24,7 +27,7 @@ pub fn app(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Err
         .unwrap_or_else(|_| "https://openrouter.ai/api/v1".to_string());
 
     let api_key = env::var("OPENROUTER_API_KEY").unwrap_or_else(|_| {
-        eprintln!("OPENROUTER_API_KEY is not set");
+        log!("OPENROUTER_API_KEY is not set");
         process::exit(1);
     });
 
@@ -43,39 +46,66 @@ pub fn app(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Err
 
     let config_clone = config.clone();
     thread::spawn(move || {
+        log!("[worker thread] started");
         let rt = tokio::runtime::Runtime::new().unwrap();
         let client = Client::with_config(config_clone);
 
         while let Ok(mut messages) = request_rx.recv() {
-            let fut = async {
-                client
-                    .chat()
-                    .create_byot(json!({
-                        "messages": messages,
-                        "model": Model::from_env().name,
-                        "tools": [
-                            json!({
-                                "type": "function",
-                                "function": ToolSpec::read_file()
-                            }),
-                            json!({
-                                "type": "function",
-                                "function": ToolSpec::write_file()
-                            }),
-                            json!({
-                                "type": "function",
-                                "function": ToolSpec::bash()
-                            })
-                        ]
-                    }))
-                    .await
-            };
-            let response = rt.block_on(fut);
+            log!(
+                "[worker thread] received request: {}",
+                serde_json::to_string_pretty(&messages).unwrap()
+            );
+            let value = client.clone();
+            let response: Result<Value, async_openai::error::OpenAIError> =
+                rt.block_on(async move {
+                    log!("[worker thread][tokio] creating and sending OpenAI chat request");
+                    let res = value
+                        .chat()
+                        .create_byot(json!({
+                            "messages": messages,
+                            "model": Model::from_env().name,
+                            "tools": [
+                                json!({
+                                    "type": "function",
+                                    "function": ToolSpec::read_file()
+                                }),
+                                json!({
+                                    "type": "function",
+                                    "function": ToolSpec::write_file()
+                                }),
+                                json!({
+                                    "type": "function",
+                                    "function": ToolSpec::bash()
+                                })
+                            ]
+                        }))
+                        .await;
+                    log!("[worker thread][tokio] OpenAI chat returned");
+                    res
+                });
+            log!(
+                "[worker thread] completed OpenAI call, result variant: {}",
+                if response.is_ok() { "Ok" } else { "Err" }
+            );
+            // On error, return an error Value
             let resp_val = match response {
-                Ok(r) => r,
-                Err(e) => json!({"error": format!("{e}")}),
+                Ok(ref r) => {
+                    log!(
+                        "[worker thread] AI response: {}",
+                        serde_json::to_string_pretty(r).unwrap()
+                    );
+                    r.clone()
+                }
+                Err(ref e) => {
+                    log!("[worker thread] OpenAI error: {e}");
+                    json!({"error": format!("{e}")})
+                }
             };
-            let _ = response_tx.send(resp_val);
+            if let Err(e) = response_tx.send(resp_val) {
+                log!("[worker thread] FAILED to send response to main thread: {e}");
+            } else {
+                log!("[worker thread] sent result to main thread");
+            }
         }
     });
 
@@ -86,13 +116,21 @@ pub fn app(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Err
     .to_vec();
 
     // Initial request, ask worker thread to fetch OpenAI API response
+    log!("[main] sending initial request");
+    request_tx.send(messages.clone()).unwrap();
 
     loop {
-        let response = response_rx.recv()?;
-
-        eprintln!(
-            "received response: {}",
-            serde_json::to_string_pretty(&response)?
+        log!("[main] waiting for response from worker thread...");
+        let response = match response_rx.recv() {
+            Ok(r) => r,
+            Err(e) => {
+                log!("[main] FAILED to receive response from worker: {e}");
+                break;
+            }
+        };
+        log!(
+            "[main] received response: {}",
+            serde_json::to_string_pretty(&response).unwrap()
         );
 
         if let Some(tool_calls) = response["choices"][0]["message"]["tool_calls"].as_array() {
@@ -103,7 +141,7 @@ pub fn app(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Err
             }));
 
             for tool_call in tool_calls {
-                eprintln!(
+                log!(
                     "processing tool call: {}",
                     serde_json::to_string_pretty(tool_call)?
                 );
@@ -117,7 +155,7 @@ pub fn app(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Err
                     "WriteFile" => handle_write_file(&arguments, tool_call_id, name),
                     "Bash" => handle_bash(&arguments, tool_call_id, name),
                     other => {
-                        eprintln!("Unknown toolcall name: {}", other);
+                        log!("Unknown toolcall name: {}", other);
                         Ok(json!({
                             "role": "tool",
                             "tool_call_id": tool_call_id,
@@ -130,16 +168,16 @@ pub fn app(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Err
             }
             request_tx.send(messages.clone()).unwrap();
         } else if let Some(content) = response["choices"][0]["message"]["content"].as_str() {
-            eprintln!("no toolcall");
-            eprintln!("assistant response content: {}", content);
+            log!("no toolcall");
+            log!("assistant response content: {}", content);
             messages.push(json!({
                 "role": Role::assistant,
                 "content": content
             }));
-            println!("{}", content);
+            log!("{}", content);
             break;
         } else {
-            eprintln!("Unexpected response format: {}", response);
+            log!("Unexpected response format: {}", response);
             break;
         }
     }
