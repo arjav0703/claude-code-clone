@@ -5,6 +5,10 @@ use serde_json::{Value, json};
 use std::{
     env::{self},
     process,
+    sync::{
+        Arc, Mutex,
+        mpsc::{Receiver, Sender},
+    },
 };
 
 use crate::{
@@ -44,13 +48,27 @@ pub fn app(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Err
     ) = mpsc::channel();
     let (response_tx, response_rx): (Sender<Value>, Receiver<Value>) = mpsc::channel();
 
+    let app_state = {
+        AppState {
+            messages: Arc::new(Mutex::new(
+                [json!({
+                    "role": Role::user,
+                    "content": args.prompt
+                })]
+                .to_vec(),
+            )),
+            message_sender: request_tx,
+            message_receiver: response_rx,
+        }
+    };
+
     let config_clone = config.clone();
     thread::spawn(move || {
         log!("[worker thread] started");
         let rt = tokio::runtime::Runtime::new().unwrap();
         let client = Client::with_config(config_clone);
 
-        while let Ok(mut messages) = request_rx.recv() {
+        while let Ok(messages) = request_rx.recv() {
             log!(
                 "[worker thread] received request: {}",
                 serde_json::to_string_pretty(&messages).unwrap()
@@ -109,19 +127,15 @@ pub fn app(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Err
         }
     });
 
-    let mut messages = [json!({
-        "role": Role::user,
-        "content": args.prompt
-    })]
-    .to_vec();
+    let mut messages = app_state.messages.lock().unwrap().clone();
 
     // Initial request, ask worker thread to fetch OpenAI API response
     log!("[main] sending initial request");
-    request_tx.send(messages.clone()).unwrap();
+    app_state.message_sender.send(messages.clone()).unwrap();
 
     loop {
         log!("[main] waiting for response from worker thread...");
-        let response = match response_rx.recv() {
+        let response = match app_state.message_receiver.recv() {
             Ok(r) => r,
             Err(e) => {
                 log!("[main] FAILED to receive response from worker: {e}");
@@ -134,12 +148,6 @@ pub fn app(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Err
         );
 
         if let Some(tool_calls) = response["choices"][0]["message"]["tool_calls"].as_array() {
-            messages.push(json!({
-                "role": Role::assistant,
-                "content": response["choices"][0]["message"]["content"].clone(),
-                "tool_calls": tool_calls
-            }));
-
             for tool_call in tool_calls {
                 log!(
                     "processing tool call: {}",
@@ -166,7 +174,7 @@ pub fn app(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Err
                 }?;
                 messages.push(tool_response);
             }
-            request_tx.send(messages.clone()).unwrap();
+            app_state.message_sender.send(messages.clone()).unwrap();
         } else if let Some(content) = response["choices"][0]["message"]["content"].as_str() {
             log!("no toolcall");
             log!("assistant response content: {}", content);
@@ -190,6 +198,12 @@ pub fn app(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Err
             break Ok(());
         }
     }
+}
+
+struct AppState {
+    messages: Arc<Mutex<Vec<Value>>>,
+    message_sender: Sender<Vec<Value>>,
+    message_receiver: Receiver<Value>,
 }
 
 fn render(frame: &mut Frame) {
