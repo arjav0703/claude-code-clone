@@ -1,15 +1,15 @@
-use async_openai::{Client, config::OpenAIConfig};
+use async_openai::config::OpenAIConfig;
 use clap::Parser;
 use ratatui::{DefaultTerminal, Frame, crossterm};
 use serde_json::{Value, json};
 use std::{
     env::{self},
     process,
-    sync::{
-        Arc, Mutex,
-        mpsc::{Receiver, Sender},
-    },
+    sync::{Arc, Mutex},
 };
+
+mod state;
+use state::AppState;
 
 use crate::{
     log,
@@ -22,7 +22,7 @@ struct Args {
     #[arg(short = 'p', long)]
     prompt: String,
 }
-use crate::util::{Model, Role, ToolSpec};
+use crate::util::Role;
 
 pub fn app(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
@@ -36,7 +36,6 @@ pub fn app(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Err
     });
 
     use std::sync::mpsc::{self, Receiver, Sender};
-    use std::thread;
 
     let config = OpenAIConfig::new()
         .with_api_base(base_url)
@@ -58,74 +57,11 @@ pub fn app(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Err
                 .to_vec(),
             )),
             message_sender: request_tx,
-            message_receiver: response_rx,
+            config,
         }
     };
 
-    let config_clone = config.clone();
-    thread::spawn(move || {
-        log!("[worker thread] started");
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        let client = Client::with_config(config_clone);
-
-        while let Ok(messages) = request_rx.recv() {
-            log!(
-                "[worker thread] received request: {}",
-                serde_json::to_string_pretty(&messages).unwrap()
-            );
-            let value = client.clone();
-            let response: Result<Value, async_openai::error::OpenAIError> =
-                rt.block_on(async move {
-                    log!("[worker thread][tokio] creating and sending OpenAI chat request");
-                    let res = value
-                        .chat()
-                        .create_byot(json!({
-                            "messages": messages,
-                            "model": Model::from_env().name,
-                            "tools": [
-                                json!({
-                                    "type": "function",
-                                    "function": ToolSpec::read_file()
-                                }),
-                                json!({
-                                    "type": "function",
-                                    "function": ToolSpec::write_file()
-                                }),
-                                json!({
-                                    "type": "function",
-                                    "function": ToolSpec::bash()
-                                })
-                            ]
-                        }))
-                        .await;
-                    log!("[worker thread][tokio] OpenAI chat returned");
-                    res
-                });
-            log!(
-                "[worker thread] completed OpenAI call, result variant: {}",
-                if response.is_ok() { "Ok" } else { "Err" }
-            );
-            // On error, return an error Value
-            let resp_val = match response {
-                Ok(ref r) => {
-                    log!(
-                        "[worker thread] AI response: {}",
-                        serde_json::to_string_pretty(r).unwrap()
-                    );
-                    r.clone()
-                }
-                Err(ref e) => {
-                    log!("[worker thread] OpenAI error: {e}");
-                    json!({"error": format!("{e}")})
-                }
-            };
-            if let Err(e) = response_tx.send(resp_val) {
-                log!("[worker thread] FAILED to send response to main thread: {e}");
-            } else {
-                log!("[worker thread] sent result to main thread");
-            }
-        }
-    });
+    app_state.listen_for_messages(request_rx, response_tx.clone());
 
     let mut messages = app_state.messages.lock().unwrap().clone();
 
@@ -135,7 +71,7 @@ pub fn app(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Err
 
     loop {
         log!("[main] waiting for response from worker thread...");
-        let response = match app_state.message_receiver.recv() {
+        let response = match response_rx.recv() {
             Ok(r) => r,
             Err(e) => {
                 log!("[main] FAILED to receive response from worker: {e}");
@@ -198,12 +134,6 @@ pub fn app(terminal: &mut DefaultTerminal) -> Result<(), Box<dyn std::error::Err
             break Ok(());
         }
     }
-}
-
-struct AppState {
-    messages: Arc<Mutex<Vec<Value>>>,
-    message_sender: Sender<Vec<Value>>,
-    message_receiver: Receiver<Value>,
 }
 
 fn render(frame: &mut Frame) {
