@@ -16,6 +16,7 @@ use crate::{
 pub struct AppState {
     pub messages: Arc<Mutex<Vec<Value>>>,
     pub message_sender: Sender<Vec<Value>>,
+    pub message_receiver: Receiver<Value>,
     pub config: OpenAIConfig,
 }
 
