@@ -1,19 +1,12 @@
-use async_openai::config::OpenAIConfig;
 use color_eyre::Result;
-use ratatui::{DefaultTerminal, Frame, text::Text};
+use ratatui::DefaultTerminal;
 use serde_json::{Value, json};
-use std::sync::Mutex;
-use std::{env, sync::Arc};
 
+use super::App;
+
+use crate::log;
 use crate::tools::{handle_bash, handle_read_file, handle_write_file};
 use crate::util::Role;
-use crate::{app::state::AppState, log};
-
-pub struct App {
-    state: AppState,
-    exit_code: Option<i32>,
-}
-
 impl App {
     pub async fn run(&mut self, mut terminal: DefaultTerminal) -> Result<i32> {
         // while self.exit_code.is_none() {
@@ -106,73 +99,5 @@ impl App {
         // }
         self.render_dummy_widget(&mut terminal.get_frame());
         Ok(0)
-    }
-}
-
-impl App {
-    pub fn render(&mut self, frame: &mut Frame<'_>) {
-        let area = frame.area();
-        frame.render_widget(Text::from("hllo"), area);
-    }
-
-    fn render_dummy_widget(&mut self, frame: &mut Frame<'_>) {
-        let area = frame.area();
-        frame.render_widget(Text::from("hllo"), area);
-    }
-}
-
-use clap::Parser;
-#[derive(Parser)]
-#[command(author, version, about)]
-struct Args {
-    #[arg(short = 'p', long)]
-    prompt: String,
-}
-
-impl App {
-    pub fn setup() -> Self {
-        let args = Args::parse();
-
-        let base_url = env::var("OPENROUTER_BASE_URL")
-            .unwrap_or_else(|_| "https://openrouter.ai/api/v1".to_string());
-
-        let api_key = env::var("OPENROUTER_API_KEY").unwrap_or_else(|_| {
-            log!("OPENROUTER_API_KEY is not set");
-            std::process::exit(1);
-        });
-
-        use std::sync::mpsc::{self, Receiver, Sender};
-
-        let config = OpenAIConfig::new()
-            .with_api_base(base_url)
-            .with_api_key(api_key);
-
-        let (request_tx, request_rx): (
-            Sender<Vec<serde_json::Value>>,
-            Receiver<Vec<serde_json::Value>>,
-        ) = mpsc::channel();
-        let (response_tx, response_rx): (Sender<Value>, Receiver<Value>) = mpsc::channel();
-
-        let app_state = {
-            AppState {
-                messages: Arc::new(Mutex::new(
-                    [json!({
-                        "role": Role::user,
-                        "content": args.prompt
-                    })]
-                    .to_vec(),
-                )),
-                message_sender: request_tx,
-                message_receiver: response_rx,
-                config,
-            }
-        };
-
-        app_state.listen_for_messages(request_rx, response_tx.clone());
-
-        App {
-            state: app_state,
-            exit_code: None,
-        }
     }
 }
