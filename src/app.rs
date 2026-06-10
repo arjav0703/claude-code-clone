@@ -11,9 +11,11 @@ mod state;
 use state::AppState;
 mod render;
 
-pub struct App {
+use ratatui_textarea::TextArea;
+pub struct App<'a> {
     state: AppState,
     exit_code: Option<i32>,
+    text_area: TextArea<'a>,
 }
 
 use crate::{log, util::Role};
@@ -24,7 +26,7 @@ struct Args {
     prompt: String,
 }
 
-impl App {
+impl App<'_> {
     pub fn setup() -> Self {
         let mut exit_code = None;
         let args = Args::parse();
@@ -67,6 +69,12 @@ impl App {
 
         state.listen_for_messages(request_rx, response_tx.clone());
 
-        App { state, exit_code }
+        let text_area = TextArea::default();
+
+        App {
+            state,
+            exit_code,
+            text_area,
+        }
     }
 }
