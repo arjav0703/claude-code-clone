@@ -50,7 +50,7 @@ impl App {
         ) = mpsc::channel();
         let (response_tx, response_rx): (Sender<Value>, Receiver<Value>) = mpsc::channel();
 
-        let app_state = {
+        let state = {
             AppState {
                 messages: Arc::new(Mutex::new(
                     [json!({
@@ -65,11 +65,8 @@ impl App {
             }
         };
 
-        app_state.listen_for_messages(request_rx, response_tx.clone());
+        state.listen_for_messages(request_rx, response_tx.clone());
 
-        App {
-            state: app_state,
-            exit_code: None,
-        }
+        App { state, exit_code }
     }
 }
