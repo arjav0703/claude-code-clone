@@ -1,6 +1,6 @@
 use color_eyre::Result;
 use ratatui::DefaultTerminal;
-use ratatui::crossterm::event::{self, KeyCode, KeyEvent};
+use ratatui::crossterm::event::{self, KeyCode};
 use serde_json::{Value, json};
 
 use super::App;
@@ -26,7 +26,6 @@ impl App<'_> {
         while self.exit_code.is_none() {
             terminal.draw(|f| self.render(f))?;
 
-            let mut messages = messages.clone();
             loop {
                 if event::poll(std::time::Duration::from_millis(50))?
                     && let event::Event::Key(key) = event::read()?
@@ -35,14 +34,20 @@ impl App<'_> {
                     match key.code {
                         KeyCode::Enter => {
                             let app_state = &self.state;
-                            let mut msgs = app_state.messages.lock().unwrap();
-                            msgs.push(json!({
+                            // let mut msgs = app_state.messages.lock().unwrap();
+                            messages.push(json!({
                                 "role": Role::user,
                                 "content": self.text_area.lines().join("\n")
                             }));
-                            app_state.message_sender.send(msgs.clone()).unwrap();
+                            app_state.message_sender.send(messages.clone()).unwrap();
                             self.text_area.delete_line_by_end();
                             self.text_area.delete_line_by_head();
+                        }
+                        KeyCode::Char('q')
+                            if key.modifiers.contains(event::KeyModifiers::CONTROL) =>
+                        {
+                            self.exit_code = Some(0);
+                            break;
                         }
                         _ => {
                             self.text_area.input(key);
@@ -139,15 +144,5 @@ impl App<'_> {
             }
         }
         Ok(self.exit_code.unwrap_or(0))
-    }
-}
-
-impl App<'_> {
-    pub fn handle_events(&mut self) -> Result<()> {
-        if let event::Event::Key(key_event) = event::read()? {
-            log!("Key event: {:?}", key_event);
-            self.text_area.input(key_event);
-        }
-        Ok(())
     }
 }
