@@ -1,8 +1,10 @@
 use super::App;
 use ratatui::{
-    layout::{Constraint, Direction, Layout},
     Frame,
+    layout::{Constraint, Direction, Layout},
+    prelude::Stylize,
     text::Text,
+    widgets::Block,
 };
 impl App<'_> {
     pub fn render(&mut self, frame: &mut Frame<'_>) {
@@ -17,13 +19,15 @@ impl App<'_> {
         self.render_input_area(frame, layout[1]);
     }
 
-    pub fn render_dummy_widget(&mut self, frame: &mut Frame<'_>) {
-        let area = frame.area();
-        frame.render_widget(Text::from("hllo"), area);
-    }
-
     pub fn render_input_area(&mut self, frame: &mut Frame<'_>, area: ratatui::layout::Rect) {
-        frame.render_widget(self.text_area.widget(), area);
+        let _ = &self.text_area.set_block(
+            Block::bordered()
+                .fg(ratatui::style::Color::Yellow)
+                .not_underlined()
+                .title("Input"),
+        );
+
+        frame.render_widget(&self.text_area, area);
     }
 
     pub fn render_messages(&mut self, frame: &mut Frame<'_>, area: ratatui::layout::Rect) {
