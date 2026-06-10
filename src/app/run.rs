@@ -9,21 +9,22 @@ use crate::tools::{handle_bash, handle_read_file, handle_write_file};
 use crate::util::Role;
 impl App {
     pub async fn run(&mut self, mut terminal: DefaultTerminal) -> Result<i32> {
+        let messages = {
+            let app_state = &self.state;
+            app_state.messages.lock().unwrap().clone()
+        };
+
+        // initial message
+        {
+            let app_state = &self.state;
+            log!("[main] sending initial request");
+            app_state.message_sender.send(messages.clone()).unwrap();
+        }
+
         while self.exit_code.is_none() {
             terminal.draw(|f| self.render(f))?;
 
-            let messages = {
-                let app_state = &self.state;
-                app_state.messages.lock().unwrap().clone()
-            };
-
-            {
-                let app_state = &self.state;
-                log!("[main] sending initial request");
-                app_state.message_sender.send(messages.clone()).unwrap();
-            }
-
-            let mut messages = messages;
+            let mut messages = messages.clone();
             loop {
                 log!("[main] waiting for response from worker thread...");
 
