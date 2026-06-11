@@ -18,7 +18,7 @@ pub struct App<'a> {
     text_area: TextArea<'a>,
 }
 
-use crate::{log, util::Role};
+use crate::log;
 #[derive(Parser)]
 #[command(author, version, about)]
 struct Args {
@@ -29,7 +29,6 @@ struct Args {
 impl App<'_> {
     pub fn setup() -> Self {
         let mut exit_code = None;
-        let args = Args::parse();
 
         let base_url = env::var("OPENROUTER_BASE_URL")
             .unwrap_or_else(|_| "https://openrouter.ai/api/v1".to_string());
@@ -54,13 +53,7 @@ impl App<'_> {
 
         let state = {
             AppState {
-                messages: Arc::new(Mutex::new(
-                    [json!({
-                        "role": Role::user,
-                        "content": args.prompt
-                    })]
-                    .to_vec(),
-                )),
+                messages: Arc::new(Mutex::new([].to_vec())),
                 message_sender: request_tx,
                 message_receiver: response_rx,
                 config,

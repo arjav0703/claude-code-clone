@@ -17,11 +17,11 @@ impl App<'_> {
         };
 
         // initial message
-        {
-            let app_state = &self.state;
-            log!("[main] sending initial request");
-            app_state.message_sender.send(messages.clone()).unwrap();
-        }
+        // {
+        //     let app_state = &self.state;
+        //     log!("[main] sending initial request");
+        //     app_state.message_sender.send(messages.clone()).unwrap();
+        // }
 
         while self.exit_code.is_none() {
             terminal.draw(|f| self.render(f))?;
