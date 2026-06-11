@@ -1,5 +1,7 @@
 use super::App;
 use ratatui::style::Style;
+use ratatui::text::{Line, Span};
+use ratatui::widgets::Paragraph;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout},
@@ -34,17 +36,24 @@ impl App<'_> {
 
     pub fn render_messages(&mut self, frame: &mut Frame<'_>, area: ratatui::layout::Rect) {
         let messages = self.state.messages.lock().unwrap();
-        let text = messages
-            .iter()
-            .map(|msg| {
-                let role = msg["role"].as_str().unwrap_or("unknown");
-                let content = msg["content"].as_str().unwrap_or("");
-                format!("{}: {}", role, content)
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
 
-        if text.is_empty() {
+        let mut lines = Vec::new();
+
+        for msg in messages.iter() {
+            let line = Line::from(Vec::from([
+                Span::styled(
+                    format!("{}: ", msg["role"].as_str().unwrap_or_default()),
+                    Style::new().blue(),
+                ),
+                Span::styled(
+                    msg["content"].as_str().unwrap_or("unknown"),
+                    Style::new().white(),
+                ),
+            ]));
+            lines.push(line);
+        }
+
+        if lines.is_empty() {
             let big_text = BigText::builder()
                 .pixel_size(PixelSize::Full)
                 .style(Style::new().blue())
@@ -62,8 +71,13 @@ impl App<'_> {
             .split(area);
             frame.render_widget(big_text, layout[0]);
             frame.render_widget(Text::from("CTRL+Q to quit"), layout[1]);
+        } else {
+            let paragraph = Paragraph::new(lines).block(
+                Block::bordered()
+                    .title("Messages")
+                    .fg(ratatui::style::Color::Green),
+            );
+            frame.render_widget(paragraph, area);
         }
-
-        frame.render_widget(Text::from(text), area);
     }
 }
