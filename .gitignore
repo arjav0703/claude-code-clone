@@ -14,3 +14,5 @@ target/
 run.sh
 
 log.txt
+
+.DS_Store
