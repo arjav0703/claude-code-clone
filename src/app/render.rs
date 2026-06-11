@@ -1,4 +1,5 @@
 use super::App;
+use ratatui::style::Style;
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout},
@@ -6,6 +7,7 @@ use ratatui::{
     text::Text,
     widgets::Block,
 };
+use tui_big_text::{BigText, PixelSize};
 impl App<'_> {
     pub fn render(&mut self, frame: &mut Frame<'_>) {
         let area = frame.area();
@@ -41,6 +43,27 @@ impl App<'_> {
             })
             .collect::<Vec<_>>()
             .join("\n");
+
+        if text.is_empty() {
+            let big_text = BigText::builder()
+                .pixel_size(PixelSize::Full)
+                .style(Style::new().blue())
+                .lines(vec![
+                    "Start".red().into(),
+                    "Typing...".white().into(),
+                    "~~~~~".into(),
+                ])
+                .build();
+
+            let layout = Layout::new(
+                Direction::Vertical,
+                [Constraint::Min(0), Constraint::Min(0)],
+            )
+            .split(area);
+            frame.render_widget(big_text, layout[0]);
+            frame.render_widget(Text::from("CTRL+Q to quit"), layout[1]);
+        }
+
         frame.render_widget(Text::from(text), area);
     }
 }
