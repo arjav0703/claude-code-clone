@@ -1,7 +1,9 @@
+
 # Claude Code Clone
 
 This is a TUI application that allows you to use your favourite LLM (via openrouter) to assist you with coding. I made this project to learn how AI interacts with natibe applications and to have a fun project to work on. I hope you enjoy it as much as I do!
 
+<img width="1526" height="1050" alt="feca8fab707e3f1d6319663eae144cadd62404b65fc9230924b51cb440ddf023" src="https://github.com/user-attachments/assets/6932c45c-2598-460f-aefb-9722f9ba62d7" />
 
 ## Tools implemented
 - Read tool: ALlows AI model to read files on the host system.
