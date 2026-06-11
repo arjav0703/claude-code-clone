@@ -15,7 +15,7 @@ impl App<'_> {
         let area = frame.area();
         let layout = Layout::new(
             Direction::Vertical,
-            [Constraint::Min(0), Constraint::Length(3)],
+            [Constraint::Min(0), Constraint::Length(7)],
         )
         .split(area);
 
@@ -70,7 +70,10 @@ impl App<'_> {
             )
             .split(area);
             frame.render_widget(big_text, layout[0]);
-            frame.render_widget(Text::from("CTRL+Q to quit"), layout[1]);
+            frame.render_widget(
+                Text::from("CTRL+Q to quit \n ALT + ENTER to send message"),
+                layout[1],
+            );
         } else {
             let paragraph = Paragraph::new(lines).block(
                 Block::bordered()

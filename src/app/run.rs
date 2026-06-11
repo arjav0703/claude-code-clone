@@ -1,6 +1,6 @@
 use color_eyre::Result;
 use ratatui::DefaultTerminal;
-use ratatui::crossterm::event::{self, KeyCode};
+use ratatui::crossterm::event::{self, KeyCode, KeyModifiers};
 use serde_json::{Value, json};
 
 use super::App;
@@ -21,29 +21,28 @@ impl App<'_> {
         while self.exit_code.is_none() {
             terminal.draw(|f| self.render(f))?;
 
-            if event::poll(std::time::Duration::from_millis(50))? {
-                if let event::Event::Key(key) = event::read()? {
-                    log!("Key event: {:?}", key);
-                    match key.code {
-                        KeyCode::Enter => {
-                            let app_state = &self.state;
-                            let mut msgs = app_state.messages.lock().unwrap();
-                            msgs.push(json!({
-                                "role": Role::user,
-                                "content": self.text_area.lines().join("\n")
-                            }));
-                            app_state.message_sender.send(msgs.clone()).unwrap();
-                            self.text_area.delete_line_by_end();
-                            self.text_area.delete_line_by_head();
-                        }
-                        KeyCode::Char('q')
-                            if key.modifiers.contains(event::KeyModifiers::CONTROL) =>
-                        {
-                            self.exit_code = Some(0);
-                        }
-                        _ => {
-                            self.text_area.input(key);
-                        }
+            if event::poll(std::time::Duration::from_millis(50))?
+                && let event::Event::Key(key) = event::read()?
+            {
+                log!("Key event: {:?}", key);
+                match key.code {
+                    KeyCode::Enter if key.modifiers == KeyModifiers::ALT => {
+                        let app_state = &self.state;
+                        let mut msgs = app_state.messages.lock().unwrap();
+                        msgs.push(json!({
+                            "role": Role::user,
+                            "content": self.text_area.lines().join("\n")
+                        }));
+                        app_state.message_sender.send(msgs.clone()).unwrap();
+                        self.text_area.delete_line_by_end();
+                        self.text_area.delete_line_by_head();
+                    }
+
+                    KeyCode::Char('q') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
+                        self.exit_code = Some(0);
+                    }
+                    _ => {
+                        self.text_area.input(key);
                     }
                 }
             }
