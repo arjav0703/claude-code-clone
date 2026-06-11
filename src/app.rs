@@ -1,6 +1,6 @@
 use async_openai::config::OpenAIConfig;
 use clap::Parser;
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::{
     env,
     sync::{Arc, Mutex},
