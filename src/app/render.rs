@@ -66,11 +66,22 @@ impl App<'_> {
             .block(
                 Block::bordered()
                     .title("Logs")
-                    .fg(ratatui::style::Color::Yellow),
+                    .fg(ratatui::style::Color::Blue)
+                    .bg(ratatui::style::Color::Black),
             )
             .scroll((self.logs_scroll, 0));
+
+        let layout = Layout::new(
+            Direction::Horizontal,
+            [
+                Constraint::Percentage(10),
+                Constraint::Percentage(80),
+                Constraint::Percentage(10),
+            ],
+        );
+
         frame.render_widget(Clear, area);
-        frame.render_widget(paragraph, area);
+        frame.render_widget(paragraph, layout.split(area)[1]);
     }
 
     pub fn render_messages(&mut self, frame: &mut Frame<'_>, area: ratatui::layout::Rect) {
