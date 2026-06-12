@@ -3,9 +3,10 @@ use std::fs;
 use super::App;
 use crate::app::ActiveArea;
 use async_openai::config::Config;
+use ratatui::layout::Rect;
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Clear, Paragraph};
+use ratatui::widgets::{Borders, Clear, Paragraph};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout},
@@ -13,7 +14,6 @@ use ratatui::{
     text::Text,
     widgets::Block,
 };
-use secrecy::ExposeSecret;
 use tui_big_text::{BigText, PixelSize};
 
 impl App<'_> {
@@ -147,28 +147,34 @@ impl App<'_> {
         }
     }
 
-    fn render_settings_popup(&mut self, frame: &mut Frame<'_>, area: ratatui::layout::Rect) {
-        let api_key = self.state.config.api_key().expose_secret().to_string();
-        let api_key_display = if api_key.is_empty() {
-            "API Key not set".to_string()
-        } else {
-            format!(
-                "API key: {}{}",
-                "*".repeat(api_key.len() - 5),
-                &api_key[api_key.len() - 5..]
-            )
-        };
-
+    fn render_settings_popup(&mut self, frame: &mut Frame<'_>, area: Rect) {
         let url = self.state.config.api_base().to_string();
 
-        let paragraph = Paragraph::new(format!("{api_key_display} \n URL: {url}")).block(
-            Block::bordered()
-                .title("Settings")
-                .fg(ratatui::style::Color::Magenta)
-                .bg(ratatui::style::Color::Black),
+        self.state.settings_state.model_textarea.set_block(
+            Block::default()
+                .title(" Model ")
+                .borders(Borders::ALL)
+                .border_style(Style::new().yellow()),
         );
 
-        let layout = Layout::new(
+        self.state
+            .settings_state
+            .base_url_textarea
+            .set_block(Block::default().title(" API URL ").borders(Borders::ALL));
+
+        self.state
+            .settings_state
+            .api_key_textarea
+            .set_block(Block::default().title(" API Key ").borders(Borders::ALL));
+
+        let popup_block = Block::default().title(" Settings ").borders(Borders::ALL);
+
+        frame.render_widget(Clear, area);
+        frame.render_widget(popup_block.clone(), area);
+
+        let inner = popup_block.inner(area);
+
+        let horizontal = Layout::new(
             Direction::Horizontal,
             [
                 Constraint::Percentage(10),
@@ -177,7 +183,23 @@ impl App<'_> {
             ],
         );
 
-        frame.render_widget(Clear, area);
-        frame.render_widget(paragraph, layout.split(area)[1]);
+        let centered = horizontal.split(inner)[1];
+
+        let vertical = Layout::new(
+            Direction::Vertical,
+            [
+                Constraint::Length(5),
+                Constraint::Length(5),
+                Constraint::Length(5),
+            ],
+        );
+
+        let chunks = vertical.split(centered);
+
+        // frame.render_widget(api_key_display, chunks[0]);
+        frame.render_widget(&self.state.settings_state.model_textarea, chunks[0]);
+        frame.render_widget(&self.state.settings_state.base_url_textarea, chunks[1]);
+
+        frame.render_widget(&self.state.settings_state.api_key_textarea, chunks[2]);
     }
 }
