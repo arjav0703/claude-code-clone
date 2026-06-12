@@ -1,3 +1,4 @@
+mod event;
 mod run;
 mod setup;
 mod state;

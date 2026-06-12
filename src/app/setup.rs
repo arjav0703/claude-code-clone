@@ -14,8 +14,6 @@ use crate::{
 
 impl App<'_> {
     pub fn setup() -> Self {
-        let mut exit_code = None;
-
         let base_url = env::var("OPENROUTER_BASE_URL")
             .unwrap_or_else(|_| "https://openrouter.ai/api/v1".to_string());
 
@@ -52,7 +50,7 @@ impl App<'_> {
 
         App {
             state,
-            exit_code,
+            exit_code: None,
             text_area,
             active_area: ActiveArea::UserInput,
             logs_scroll: 0,
