@@ -1,10 +1,8 @@
-use async_openai::{Client, config::OpenAIConfig};
+use super::AppState;
+use async_openai::Client;
 use serde_json::{Value, json};
 use std::{
-    sync::{
-        Arc, Mutex,
-        mpsc::{Receiver, Sender},
-    },
+    sync::mpsc::{Receiver, Sender},
     thread,
 };
 
@@ -12,13 +10,6 @@ use crate::{
     log,
     util::{Model, ToolSpec},
 };
-
-pub struct AppState {
-    pub messages: Arc<Mutex<Vec<Value>>>,
-    pub message_sender: Sender<Vec<Value>>,
-    pub message_receiver: Receiver<Value>,
-    pub config: OpenAIConfig,
-}
 
 impl AppState {
     pub fn listen_for_messages(

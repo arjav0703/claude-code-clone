@@ -1,14 +1,13 @@
-use async_openai::config::OpenAIConfig;
-use clap::Parser;
-use serde_json::Value;
-use std::{
-    env,
-    sync::{Arc, Mutex},
+mod run;
+mod setup;
+mod state;
+use std::sync::{
+    Arc, Mutex,
+    mpsc::{Receiver, Sender},
 };
 
-mod run;
-mod state;
-use state::AppState;
+use async_openai::config::OpenAIConfig;
+use serde_json::Value;
 mod render;
 
 use ratatui_textarea::TextArea;
@@ -18,56 +17,9 @@ pub struct App<'a> {
     text_area: TextArea<'a>,
 }
 
-use crate::log;
-#[derive(Parser)]
-#[command(author, version, about)]
-struct Args {
-    #[arg(short = 'p', long)]
-    prompt: String,
-}
-
-impl App<'_> {
-    pub fn setup() -> Self {
-        let mut exit_code = None;
-
-        let base_url = env::var("OPENROUTER_BASE_URL")
-            .unwrap_or_else(|_| "https://openrouter.ai/api/v1".to_string());
-
-        let api_key = env::var("OPENROUTER_API_KEY").unwrap_or_else(|_| {
-            log!("OPENROUTER_API_KEY is not set");
-            exit_code = Some(1);
-            "".to_string()
-        });
-
-        use std::sync::mpsc::{self, Receiver, Sender};
-
-        let config = OpenAIConfig::new()
-            .with_api_base(base_url)
-            .with_api_key(api_key);
-
-        let (request_tx, request_rx): (
-            Sender<Vec<serde_json::Value>>,
-            Receiver<Vec<serde_json::Value>>,
-        ) = mpsc::channel();
-        let (response_tx, response_rx): (Sender<Value>, Receiver<Value>) = mpsc::channel();
-
-        let state = {
-            AppState {
-                messages: Arc::new(Mutex::new([].to_vec())),
-                message_sender: request_tx,
-                message_receiver: response_rx,
-                config,
-            }
-        };
-
-        state.listen_for_messages(request_rx, response_tx.clone());
-
-        let text_area = TextArea::default();
-
-        App {
-            state,
-            exit_code,
-            text_area,
-        }
-    }
+pub struct AppState {
+    pub messages: Arc<Mutex<Vec<Value>>>,
+    pub message_sender: Sender<Vec<Value>>,
+    pub message_receiver: Receiver<Value>,
+    pub config: OpenAIConfig,
 }
