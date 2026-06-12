@@ -357,6 +357,7 @@ dependencies = [
  "color-eyre",
  "ratatui",
  "ratatui-textarea",
+ "secrecy",
  "serde",
  "serde_json",
  "tokio",
