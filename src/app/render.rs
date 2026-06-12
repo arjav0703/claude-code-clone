@@ -1,7 +1,11 @@
+use std::fs;
+
+use crate::app::ActiveArea;
+
 use super::App;
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::Paragraph;
+use ratatui::widgets::{Clear, Paragraph, Widget};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout},
@@ -10,17 +14,34 @@ use ratatui::{
     widgets::Block,
 };
 use tui_big_text::{BigText, PixelSize};
+
 impl App<'_> {
     pub fn render(&mut self, frame: &mut Frame<'_>) {
         let area = frame.area();
-        let layout = Layout::new(
+        let main_layout = Layout::new(
             Direction::Vertical,
             [Constraint::Min(0), Constraint::Length(7)],
         )
         .split(area);
 
-        self.render_messages(frame, layout[0]);
-        self.render_input_area(frame, layout[1]);
+        self.render_messages(frame, main_layout[0]);
+        self.render_input_area(frame, main_layout[1]);
+
+        match self.active_area {
+            ActiveArea::LogsPopup => {
+                let popup_layout = Layout::new(
+                    Direction::Vertical,
+                    [
+                        Constraint::Percentage(20),
+                        Constraint::Percentage(60),
+                        Constraint::Percentage(20),
+                    ],
+                )
+                .split(area);
+                self.render_logs_popup(frame, popup_layout[1]);
+            }
+            _ => {}
+        }
     }
 
     pub fn render_input_area(&mut self, frame: &mut Frame<'_>, area: ratatui::layout::Rect) {
@@ -32,6 +53,24 @@ impl App<'_> {
         );
 
         frame.render_widget(&self.text_area, area);
+    }
+
+    pub fn render_logs_popup(&mut self, frame: &mut Frame<'_>, area: ratatui::layout::Rect) {
+        let logs = fs::read_to_string("log.txt")
+            .unwrap_or_else(|_| "No logs available.".to_string())
+            .split("\n")
+            .map(|line| Line::from(line.to_string()))
+            .collect::<Vec<Line>>();
+
+        let paragraph = Paragraph::new(logs)
+            .block(
+                Block::bordered()
+                    .title("Logs")
+                    .fg(ratatui::style::Color::Yellow),
+            )
+            .scroll((self.logs_scroll, 0));
+        frame.render_widget(Clear, area);
+        frame.render_widget(paragraph, area);
     }
 
     pub fn render_messages(&mut self, frame: &mut Frame<'_>, area: ratatui::layout::Rect) {

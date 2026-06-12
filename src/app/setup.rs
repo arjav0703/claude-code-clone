@@ -7,7 +7,10 @@ use std::{
 };
 
 use super::App;
-use crate::{app::AppState, log};
+use crate::{
+    app::{ActiveArea, AppState},
+    log,
+};
 
 impl App<'_> {
     pub fn setup() -> Self {
@@ -18,7 +21,7 @@ impl App<'_> {
 
         let api_key = env::var("OPENROUTER_API_KEY").unwrap_or_else(|_| {
             log!("OPENROUTER_API_KEY is not set");
-            exit_code = Some(1);
+            // exit_code = Some(1);
             "".to_string()
         });
 
@@ -51,6 +54,8 @@ impl App<'_> {
             state,
             exit_code,
             text_area,
+            active_area: ActiveArea::UserInput,
+            logs_scroll: 0,
         }
     }
 }

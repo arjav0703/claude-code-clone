@@ -5,6 +5,7 @@ use serde_json::{Value, json};
 
 use super::App;
 
+use crate::app::ActiveArea;
 use crate::log;
 use crate::tools::{handle_bash, handle_read_file, handle_write_file};
 use crate::util::Role;
@@ -25,6 +26,19 @@ impl App<'_> {
                 && let event::Event::Key(key) = event::read()?
             {
                 log!("Key event: {:?}", key);
+
+                if self.active_area == ActiveArea::LogsPopup {
+                    match key.code {
+                        KeyCode::Up => {
+                            self.logs_scroll = self.logs_scroll.saturating_sub(1);
+                        }
+                        KeyCode::Down => {
+                            self.logs_scroll = self.logs_scroll.saturating_add(1);
+                        }
+                        _ => {}
+                    }
+                }
+
                 match key.code {
                     KeyCode::Enter if key.modifiers == KeyModifiers::ALT => {
                         let app_state = &self.state;
@@ -36,6 +50,15 @@ impl App<'_> {
                         app_state.message_sender.send(msgs.clone()).unwrap();
                         self.text_area.delete_line_by_end();
                         self.text_area.delete_line_by_head();
+                        self.text_area.clear();
+                    }
+
+                    KeyCode::Char('l') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                        if matches!(self.active_area, ActiveArea::LogsPopup) {
+                            self.active_area = ActiveArea::UserInput;
+                        } else {
+                            self.active_area = ActiveArea::LogsPopup;
+                        }
                     }
 
                     KeyCode::Char('q') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
