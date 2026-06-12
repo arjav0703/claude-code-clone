@@ -43,7 +43,7 @@ impl App<'_> {
             base_url_textarea: TextArea::from([config.api_base().to_string()]),
             api_key_textarea: TextArea::from([config.api_key().expose_secret().to_string()]),
             model_textarea: TextArea::from([model.name.clone()]),
-            selected_field: SettingsField::ApiKey,
+            selected_field: SettingsField::Model,
         };
 
         let state = {

@@ -48,6 +48,7 @@ pub struct Settings<'a> {
     base_url_textarea: TextArea<'a>,
 }
 
+#[derive(PartialEq)]
 enum SettingsField {
     ApiKey,
     Model,

@@ -1,7 +1,7 @@
 use std::fs;
 
 use super::App;
-use crate::app::ActiveArea;
+use crate::app::{ActiveArea, SettingsField};
 use async_openai::config::Config;
 use ratatui::layout::Rect;
 use ratatui::style::Style;
@@ -148,26 +148,31 @@ impl App<'_> {
     }
 
     fn render_settings_popup(&mut self, frame: &mut Frame<'_>, area: Rect) {
-        let url = self.state.config.api_base().to_string();
-
         self.state.settings_state.model_textarea.set_block(
             Block::default()
                 .title(" Model ")
                 .borders(Borders::ALL)
-                .border_style(Style::new().yellow()),
+                .border_style(self.get_active_settings_style(SettingsField::Model)),
         );
 
-        self.state
-            .settings_state
-            .base_url_textarea
-            .set_block(Block::default().title(" API URL ").borders(Borders::ALL));
+        self.state.settings_state.base_url_textarea.set_block(
+            Block::default()
+                .title(" API URL ")
+                .borders(Borders::ALL)
+                .border_style(self.get_active_settings_style(SettingsField::BaseUrl)),
+        );
 
-        self.state
-            .settings_state
-            .api_key_textarea
-            .set_block(Block::default().title(" API Key ").borders(Borders::ALL));
+        self.state.settings_state.api_key_textarea.set_block(
+            Block::default()
+                .title(" API Key ")
+                .borders(Borders::ALL)
+                .border_style(self.get_active_settings_style(SettingsField::ApiKey)),
+        );
 
-        let popup_block = Block::default().title(" Settings ").borders(Borders::ALL);
+        let popup_block = Block::default()
+            .title(" Settings ")
+            .borders(Borders::ALL)
+            .border_style(Style::new().magenta());
 
         frame.render_widget(Clear, area);
         frame.render_widget(popup_block.clone(), area);
@@ -201,5 +206,13 @@ impl App<'_> {
         frame.render_widget(&self.state.settings_state.base_url_textarea, chunks[1]);
 
         frame.render_widget(&self.state.settings_state.api_key_textarea, chunks[2]);
+    }
+
+    fn get_active_settings_style(&self, field: SettingsField) -> Style {
+        if self.state.settings_state.selected_field == field {
+            Style::new().magenta()
+        } else {
+            Style::new()
+        }
     }
 }

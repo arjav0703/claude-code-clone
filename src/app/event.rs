@@ -1,3 +1,4 @@
+use async_openai::config::OpenAIConfig;
 use ratatui::crossterm::{
     self,
     event::{self, KeyCode, KeyModifiers},
@@ -5,7 +6,8 @@ use ratatui::crossterm::{
 use serde_json::json;
 
 use crate::{
-    app::{ActiveArea, App},
+    app::{ActiveArea, App, Model, SettingsField},
+    log,
     util::Role,
 };
 
@@ -20,6 +22,39 @@ impl App<'_> {
                     self.logs_scroll = self.logs_scroll.saturating_add(1);
                 }
                 _ => {}
+            }
+        }
+
+        if self.active_area == ActiveArea::SettingsPopup {
+            if key.code == KeyCode::Char('s') && key.modifiers.contains(KeyModifiers::CONTROL) {
+                self.update_openrouter_config();
+                return;
+            }
+            match self.state.settings_state.selected_field {
+                SettingsField::ApiKey => match key.code {
+                    KeyCode::Tab => {
+                        self.state.settings_state.selected_field = SettingsField::Model;
+                    }
+                    _ => {
+                        self.state.settings_state.api_key_textarea.input(key);
+                    }
+                },
+                SettingsField::Model => match key.code {
+                    KeyCode::Tab => {
+                        self.state.settings_state.selected_field = SettingsField::BaseUrl;
+                    }
+                    _ => {
+                        self.state.settings_state.model_textarea.input(key);
+                    }
+                },
+                SettingsField::BaseUrl => match key.code {
+                    KeyCode::Tab => {
+                        self.state.settings_state.selected_field = SettingsField::ApiKey;
+                    }
+                    _ => {
+                        self.state.settings_state.base_url_textarea.input(key);
+                    }
+                },
             }
         }
 
@@ -61,5 +96,25 @@ impl App<'_> {
         } else {
             self.active_area = area;
         }
+    }
+
+    fn update_openrouter_config(&mut self) {
+        let base_url = self.state.settings_state.base_url_textarea.lines().join("");
+        let api_key = self.state.settings_state.api_key_textarea.lines().join("");
+        let model = self.state.settings_state.model_textarea.lines().join("");
+
+        self.state.model = Model {
+            name: model.clone(),
+        };
+
+        log!(
+            "Updating OpenRouter config: base_url={}, api_key={}",
+            base_url,
+            api_key,
+        );
+
+        self.state.config = OpenAIConfig::new()
+            .with_api_key(api_key)
+            .with_api_base(base_url);
     }
 }
