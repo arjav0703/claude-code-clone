@@ -51,7 +51,7 @@ impl App<'_> {
                 messages: Arc::new(Mutex::new([].to_vec())),
                 message_sender: request_tx,
                 message_receiver: response_rx,
-                config,
+                config: Arc::new(Mutex::new(config)),
                 settings_state,
                 model,
             }

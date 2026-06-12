@@ -6,7 +6,7 @@ use std::{
     thread,
 };
 
-use crate::{app::Model, log, util::ToolSpec};
+use crate::{log, util::ToolSpec};
 
 impl AppState {
     pub fn listen_for_messages(
@@ -14,25 +14,25 @@ impl AppState {
         request_rx: Receiver<Vec<Value>>,
         response_tx: Sender<Value>,
     ) {
-        let config = self.config.clone();
         let model = self.model.name.clone();
+        let config = self.config.clone();
 
         thread::spawn(move || {
             log!("[worker thread] started");
             let rt = tokio::runtime::Runtime::new().unwrap();
-            let client = Client::with_config(config);
 
             while let Ok(messages) = request_rx.recv() {
                 log!(
                     "[worker thread] received request: {}",
                     serde_json::to_string_pretty(&messages).unwrap()
                 );
-                let value = client.clone();
+                let config = config.lock().unwrap();
+                let client = Client::with_config(config.clone());
                 let model = model.clone();
                 let response: Result<Value, async_openai::error::OpenAIError> =
                     rt.block_on(async move {
                         log!("[worker thread][tokio] creating and sending OpenAI chat request");
-                        let res = value
+                        let res = client
                             .chat()
                             .create_byot(json!({
                                 "messages": messages,

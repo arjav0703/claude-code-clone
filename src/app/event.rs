@@ -113,7 +113,7 @@ impl App<'_> {
             api_key,
         );
 
-        self.state.config = OpenAIConfig::new()
+        *self.state.config.lock().unwrap() = OpenAIConfig::new()
             .with_api_key(api_key)
             .with_api_base(base_url);
     }
