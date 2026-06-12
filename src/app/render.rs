@@ -1,11 +1,11 @@
 use std::fs;
 
-use crate::app::ActiveArea;
-
 use super::App;
+use crate::app::ActiveArea;
+use async_openai::config::Config;
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Clear, Paragraph, Widget};
+use ratatui::widgets::{Clear, Paragraph};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout},
@@ -13,6 +13,7 @@ use ratatui::{
     text::Text,
     widgets::Block,
 };
+use secrecy::ExposeSecret;
 use tui_big_text::{BigText, PixelSize};
 
 impl App<'_> {
@@ -40,11 +41,23 @@ impl App<'_> {
                 .split(area);
                 self.render_logs_popup(frame, popup_layout[1]);
             }
+            ActiveArea::SettingsPopup => {
+                let popup_layout = Layout::new(
+                    Direction::Vertical,
+                    [
+                        Constraint::Percentage(20),
+                        Constraint::Percentage(60),
+                        Constraint::Percentage(20),
+                    ],
+                )
+                .split(area);
+                self.render_settings_popup(frame, popup_layout[1]);
+            }
             _ => {}
         }
     }
 
-    pub fn render_input_area(&mut self, frame: &mut Frame<'_>, area: ratatui::layout::Rect) {
+    fn render_input_area(&mut self, frame: &mut Frame<'_>, area: ratatui::layout::Rect) {
         let _ = &self.text_area.set_block(
             Block::bordered()
                 .fg(ratatui::style::Color::Yellow)
@@ -55,7 +68,7 @@ impl App<'_> {
         frame.render_widget(&self.text_area, area);
     }
 
-    pub fn render_logs_popup(&mut self, frame: &mut Frame<'_>, area: ratatui::layout::Rect) {
+    fn render_logs_popup(&mut self, frame: &mut Frame<'_>, area: ratatui::layout::Rect) {
         let logs = fs::read_to_string("log.txt")
             .unwrap_or_else(|_| "No logs available.".to_string())
             .split("\n")
@@ -84,7 +97,7 @@ impl App<'_> {
         frame.render_widget(paragraph, layout.split(area)[1]);
     }
 
-    pub fn render_messages(&mut self, frame: &mut Frame<'_>, area: ratatui::layout::Rect) {
+    fn render_messages(&mut self, frame: &mut Frame<'_>, area: ratatui::layout::Rect) {
         let messages = self.state.messages.lock().unwrap();
 
         let mut lines = Vec::new();
@@ -132,5 +145,39 @@ impl App<'_> {
             );
             frame.render_widget(paragraph, area);
         }
+    }
+
+    fn render_settings_popup(&mut self, frame: &mut Frame<'_>, area: ratatui::layout::Rect) {
+        let api_key = self.state.config.api_key().expose_secret().to_string();
+        let api_key_display = if api_key.is_empty() {
+            "API Key not set".to_string()
+        } else {
+            format!(
+                "API key: {}{}",
+                "*".repeat(api_key.len() - 5),
+                &api_key[api_key.len() - 5..]
+            )
+        };
+
+        let url = self.state.config.api_base().to_string();
+
+        let paragraph = Paragraph::new(format!("{api_key_display} \n URL: {url}")).block(
+            Block::bordered()
+                .title("Settings")
+                .fg(ratatui::style::Color::Magenta)
+                .bg(ratatui::style::Color::Black),
+        );
+
+        let layout = Layout::new(
+            Direction::Horizontal,
+            [
+                Constraint::Percentage(10),
+                Constraint::Percentage(80),
+                Constraint::Percentage(10),
+            ],
+        );
+
+        frame.render_widget(Clear, area);
+        frame.render_widget(paragraph, layout.split(area)[1]);
     }
 }

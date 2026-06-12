@@ -1,11 +1,10 @@
 use color_eyre::Result;
 use ratatui::DefaultTerminal;
-use ratatui::crossterm::event::{self, KeyCode, KeyModifiers};
+use ratatui::crossterm::event;
 use serde_json::{Value, json};
 
 use super::App;
 
-use crate::app::ActiveArea;
 use crate::log;
 use crate::tools::{handle_bash, handle_read_file, handle_write_file};
 use crate::util::Role;

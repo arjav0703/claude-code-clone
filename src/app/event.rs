@@ -37,20 +37,29 @@ impl App<'_> {
                 self.text_area.clear();
             }
 
+            KeyCode::Char('.') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.toggle_active_area(ActiveArea::SettingsPopup);
+            }
+
             KeyCode::Char('l') if key.modifiers.contains(KeyModifiers::CONTROL) => {
-                if matches!(self.active_area, ActiveArea::LogsPopup) {
-                    self.active_area = ActiveArea::UserInput;
-                } else {
-                    self.active_area = ActiveArea::LogsPopup;
-                }
+                self.toggle_active_area(ActiveArea::LogsPopup);
             }
 
             KeyCode::Char('q') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
                 self.exit_code = Some(0);
             }
-            _ => {
+            _ if self.active_area == ActiveArea::UserInput => {
                 self.text_area.input(key);
             }
+            _ => {}
+        }
+    }
+
+    fn toggle_active_area(&mut self, area: ActiveArea) {
+        if self.active_area == area {
+            self.active_area = ActiveArea::UserInput;
+        } else {
+            self.active_area = area;
         }
     }
 }
