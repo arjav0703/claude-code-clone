@@ -134,7 +134,7 @@ impl App<'_> {
             .split(area);
             frame.render_widget(big_text, layout[0]);
             frame.render_widget(
-                Text::from("CTRL+Q to quit \n ALT + ENTER to send message"),
+                Text::from("CTRL+Q to quit \nALT + ENTER to send message \nCTRL + . to open settings \nCTRL + L to view logs").white(),
                 layout[1],
             );
         } else {
