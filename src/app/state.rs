@@ -6,10 +6,7 @@ use std::{
     thread,
 };
 
-use crate::{
-    log,
-    util::{Model, ToolSpec},
-};
+use crate::{app::Model, log, util::ToolSpec};
 
 impl AppState {
     pub fn listen_for_messages(
@@ -18,6 +15,8 @@ impl AppState {
         response_tx: Sender<Value>,
     ) {
         let config = self.config.clone();
+        let model = self.model.name.clone();
+
         thread::spawn(move || {
             log!("[worker thread] started");
             let rt = tokio::runtime::Runtime::new().unwrap();
@@ -29,6 +28,7 @@ impl AppState {
                     serde_json::to_string_pretty(&messages).unwrap()
                 );
                 let value = client.clone();
+                let model = model.clone();
                 let response: Result<Value, async_openai::error::OpenAIError> =
                     rt.block_on(async move {
                         log!("[worker thread][tokio] creating and sending OpenAI chat request");
@@ -36,7 +36,7 @@ impl AppState {
                             .chat()
                             .create_byot(json!({
                                 "messages": messages,
-                                "model": Model::from_env().name,
+                                "model": model,
                                 "tools": [
                                     json!({
                                         "type": "function",

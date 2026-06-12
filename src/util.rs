@@ -15,18 +15,6 @@ pub enum Role {
 //     }
 // }
 
-pub struct Model {
-    pub name: String,
-}
-
-impl Model {
-    pub fn from_env() -> Self {
-        let name = std::env::var("OPENROUTER_MODEL")
-            .unwrap_or_else(|_| "anthropic/claude-haiku-4.5".to_string());
-        Self { name }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ToolSpec {
     pub name: String,

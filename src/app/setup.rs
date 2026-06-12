@@ -1,15 +1,15 @@
-use async_openai::config::OpenAIConfig;
+use super::App;
+use crate::{
+    app::{ActiveArea, AppState, Model, Settings, SettingsField},
+    log,
+};
+use async_openai::config::{Config, OpenAIConfig};
 use ratatui_textarea::TextArea;
+use secrecy::ExposeSecret;
 use serde_json::Value;
 use std::{
     env,
     sync::{Arc, Mutex},
-};
-
-use super::App;
-use crate::{
-    app::{ActiveArea, AppState},
-    log,
 };
 
 impl App<'_> {
@@ -35,12 +35,25 @@ impl App<'_> {
         ) = mpsc::channel();
         let (response_tx, response_rx): (Sender<Value>, Receiver<Value>) = mpsc::channel();
 
+        let model = Model {
+            name: "openrouter/owl-alpha".to_string(),
+        };
+
+        let settings_state = Settings {
+            base_url_textarea: TextArea::from([config.api_base().to_string()]),
+            api_key_textarea: TextArea::from([config.api_key().expose_secret().to_string()]),
+            model_textarea: TextArea::from([model.name.clone()]),
+            selected_field: SettingsField::ApiKey,
+        };
+
         let state = {
             AppState {
                 messages: Arc::new(Mutex::new([].to_vec())),
                 message_sender: request_tx,
                 message_receiver: response_rx,
                 config,
+                settings_state,
+                model,
             }
         };
 
