@@ -4,6 +4,7 @@ use crate::{
     log,
 };
 use async_openai::config::{Config, OpenAIConfig};
+use clap::builder::Str;
 use ratatui_textarea::TextArea;
 use secrecy::ExposeSecret;
 use serde_json::Value;
@@ -23,7 +24,7 @@ impl App<'_> {
             .try_deserialize::<HashMap<String, String>>()
             .unwrap_or_default();
 
-        let base_url = settings
+        let base_url: String = settings
             .get("OPENROUTER_API_BASE")
             .cloned()
             .unwrap_or_else(|| {
@@ -31,7 +32,7 @@ impl App<'_> {
                 "https://openrouter.ai/api/v1".to_string()
             });
 
-        let api_key = settings
+        let api_key: String = settings
             .get("OPENROUTER_API_KEY")
             .cloned()
             .unwrap_or_else(|| {
