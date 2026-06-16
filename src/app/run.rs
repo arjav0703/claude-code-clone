@@ -24,7 +24,7 @@ impl App<'_> {
             if event::poll(std::time::Duration::from_millis(50))?
                 && let event::Event::Key(key) = event::read()?
             {
-                log!("Key event: {:?}", key);
+                // log!("Key event: {:?}", key);
                 self.handle_key_event(key);
             }
 

@@ -2,7 +2,6 @@ use std::fs;
 
 use super::App;
 use crate::app::{ActiveArea, SettingsField};
-use async_openai::config::Config;
 use ratatui::layout::Rect;
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};

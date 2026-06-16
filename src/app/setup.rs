@@ -4,7 +4,6 @@ use crate::{
     log,
 };
 use async_openai::config::{Config, OpenAIConfig};
-use clap::builder::Str;
 use ratatui_textarea::TextArea;
 use secrecy::ExposeSecret;
 use serde_json::Value;
