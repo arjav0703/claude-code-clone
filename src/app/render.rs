@@ -18,14 +18,23 @@ use tui_big_text::{BigText, PixelSize};
 impl App<'_> {
     pub fn render(&mut self, frame: &mut Frame<'_>) {
         let area = frame.area();
+
         let main_layout = Layout::new(
-            Direction::Vertical,
-            [Constraint::Min(0), Constraint::Length(7)],
+            Direction::Horizontal,
+            [Constraint::Percentage(80), Constraint::Percentage(20)],
         )
         .split(area);
 
-        self.render_messages(frame, main_layout[0]);
-        self.render_input_area(frame, main_layout[1]);
+        self.render_history_list(frame, main_layout[1]);
+
+        let chat_layout = Layout::new(
+            Direction::Vertical,
+            [Constraint::Min(0), Constraint::Length(7)],
+        )
+        .split(main_layout[0]);
+
+        self.render_messages(frame, chat_layout[0]);
+        self.render_input_area(frame, chat_layout[1]);
 
         match self.active_area {
             ActiveArea::LogsPopup => {
@@ -213,5 +222,9 @@ impl App<'_> {
         } else {
             Style::new()
         }
+    }
+
+    fn render_history_list(&mut self, frame: &mut Frame<'_>, area: ratatui::layout::Rect) {
+        frame.render_widget(Block::bordered().border_style(Style::default().red()), area);
     }
 }
