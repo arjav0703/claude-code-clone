@@ -4,6 +4,7 @@ use crate::{
     log,
 };
 use async_openai::config::{Config, OpenAIConfig};
+use ratatui::widgets::ListState;
 use ratatui_textarea::TextArea;
 use secrecy::ExposeSecret;
 use serde_json::Value;
@@ -76,6 +77,7 @@ impl App<'_> {
                 settings_state,
                 model,
                 chat_id,
+                history_list_state: ListState::default(),
             }
         };
 

@@ -8,6 +8,7 @@ use std::sync::{
 };
 
 use async_openai::config::OpenAIConfig;
+use ratatui::widgets::ListState;
 use serde_json::Value;
 mod history;
 mod render;
@@ -28,6 +29,7 @@ pub struct App<'a> {
 
 pub struct AppState {
     pub chat_id: String,
+    pub history_list_state: ListState,
     pub model: Model,
     pub settings_state: Settings<'static>,
     pub messages: Arc<Mutex<Vec<Value>>>,

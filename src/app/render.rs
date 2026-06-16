@@ -242,6 +242,6 @@ impl App<'_> {
             .highlight_style(Style::new().yellow().bold())
             .highlight_symbol(">> ");
 
-        frame.render_widget(list, area);
+        frame.render_stateful_widget(list, area, &mut self.state.history_list_state);
     }
 }
