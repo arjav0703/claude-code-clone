@@ -103,6 +103,7 @@ impl App<'_> {
                 }
             }
         }
+        self.save_current_conversation();
         Ok(self.exit_code.unwrap_or(0))
     }
 }

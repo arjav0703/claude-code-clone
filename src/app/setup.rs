@@ -65,6 +65,8 @@ impl App<'_> {
             selected_field: SettingsField::Model,
         };
 
+        let chat_id = format!("chat_{}", small_uid::SmallUid::new());
+
         let state = {
             AppState {
                 messages: Arc::new(Mutex::new([].to_vec())),
@@ -73,6 +75,7 @@ impl App<'_> {
                 config: Arc::new(Mutex::new(config)),
                 settings_state,
                 model,
+                chat_id,
             }
         };
 

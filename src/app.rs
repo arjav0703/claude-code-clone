@@ -9,6 +9,7 @@ use std::sync::{
 
 use async_openai::config::OpenAIConfig;
 use serde_json::Value;
+mod history;
 mod render;
 
 use ratatui_textarea::TextArea;
@@ -26,6 +27,7 @@ pub struct App<'a> {
 }
 
 pub struct AppState {
+    pub chat_id: String,
     pub model: Model,
     pub settings_state: Settings<'static>,
     pub messages: Arc<Mutex<Vec<Value>>>,
