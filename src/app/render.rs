@@ -5,7 +5,7 @@ use crate::app::{ActiveArea, SettingsField};
 use ratatui::layout::Rect;
 use ratatui::style::Style;
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Borders, Clear, Paragraph};
+use ratatui::widgets::{Borders, Clear, List, Paragraph};
 use ratatui::{
     Frame,
     layout::{Constraint, Direction, Layout},
@@ -225,6 +225,23 @@ impl App<'_> {
     }
 
     fn render_history_list(&mut self, frame: &mut Frame<'_>, area: ratatui::layout::Rect) {
-        frame.render_widget(Block::bordered().border_style(Style::default().red()), area);
+        let title = Line::from_iter([
+            Span::from("Chat History").bold(),
+            Span::from("(Press arrow keys to navigate, enter to select conversation)")
+                .italic()
+                .dim(),
+        ]);
+
+        let history_list = self.get_history_list();
+        let list = List::new(history_list)
+            .block(
+                Block::bordered()
+                    .title(title.clone())
+                    .style(Style::new().red()),
+            )
+            .highlight_style(Style::new().yellow().bold())
+            .highlight_symbol(">> ");
+
+        frame.render_widget(list, area);
     }
 }
