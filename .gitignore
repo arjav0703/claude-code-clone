@@ -16,3 +16,5 @@ run.sh
 log.txt
 
 .DS_Store
+
+config.toml

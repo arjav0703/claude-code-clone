@@ -8,20 +8,36 @@ use ratatui_textarea::TextArea;
 use secrecy::ExposeSecret;
 use serde_json::Value;
 use std::{
+    collections::HashMap,
     env,
     sync::{Arc, Mutex},
 };
 
 impl App<'_> {
     pub fn setup() -> Self {
-        let base_url = env::var("OPENROUTER_BASE_URL")
-            .unwrap_or_else(|_| "https://openrouter.ai/api/v1".to_string());
+        let settings = config::Config::builder()
+            // .add_source(config::Environment::default())
+            .add_source(config::File::with_name("config.toml").required(false))
+            .build()
+            .unwrap()
+            .try_deserialize::<HashMap<String, String>>()
+            .unwrap_or_default();
 
-        let api_key = env::var("OPENROUTER_API_KEY").unwrap_or_else(|_| {
-            log!("OPENROUTER_API_KEY is not set");
-            // exit_code = Some(1);
-            "".to_string()
-        });
+        let base_url = settings
+            .get("OPENROUTER_API_BASE")
+            .cloned()
+            .unwrap_or_else(|| {
+                log!("OPENROUTER_API_BASE is not set, using default");
+                "https://openrouter.ai/api/v1".to_string()
+            });
+
+        let api_key = settings
+            .get("OPENROUTER_API_KEY")
+            .cloned()
+            .unwrap_or_else(|| {
+                log!("OPENROUTER_API_KEY is not set, using default");
+                env::var("OPENROUTER_API_KEY").unwrap_or_default()
+            });
 
         use std::sync::mpsc::{self, Receiver, Sender};
 
@@ -36,7 +52,10 @@ impl App<'_> {
         let (response_tx, response_rx): (Sender<Value>, Receiver<Value>) = mpsc::channel();
 
         let model = Model {
-            name: "openrouter/owl-alpha".to_string(),
+            name: settings.get("MODEL_NAME").cloned().unwrap_or_else(|| {
+                log!("MODEL_NAME is not set, using default");
+                "openrouter/owl-alpha".to_string()
+            }),
         };
 
         let settings_state = Settings {
