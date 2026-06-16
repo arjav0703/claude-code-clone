@@ -23,10 +23,13 @@ cd claude-code-clone
 cargo run
 ```
 
-### Environment Variables
-- `OPENROUTER_API_KEY`
-- `OPENROUTER_MODEL` (name of the model you want to use, e.g. `openrouter/owl-alpha`)
-
+### Configuration file (`config.toml`)
+1. Create a file called `config.toml` in the root directory of the project.
+2. Add the following content to the file, replacing the values with your own:
+```toml
+OPENROUTER_API_KEY="your_openrouter_api_key_here"
+MODEL_NAME = "openrouter/owl-alpha"
+```
 
 ### AI usage disclosure
 I had tab completions on throughout the development process. It helped every once in a while. I also used opencode for debugging when I wrote ugly code and confused myself 😭. Used ChatGPT for asking questions (mostly when i couldn't find something in the documentation)
