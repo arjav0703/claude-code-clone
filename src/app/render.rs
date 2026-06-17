@@ -142,7 +142,7 @@ impl App<'_> {
             .split(area);
             frame.render_widget(big_text, layout[0]);
             frame.render_widget(
-                Text::from("CTRL+Q to quit \nALT + ENTER to send message \nCTRL + . to open settings \nCTRL + L to view logs").white(),
+                Text::from("CTRL + Q to quit \nALT + ENTER to send message \nCTRL + . to open settings \nCTRL + L to view logs\nCTRL + H to access chat history\nCTRL + N to create a new chat").white(),
                 layout[1],
             );
         } else {

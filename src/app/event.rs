@@ -3,7 +3,7 @@ use std::fs;
 use async_openai::config::OpenAIConfig;
 use ratatui::crossterm::{
     self,
-    event::{self, KeyCode, KeyModifiers},
+    event::{self, Event::Key, KeyCode, KeyModifiers},
 };
 use serde_json::{Value, json};
 
@@ -120,8 +120,12 @@ impl App<'_> {
             KeyCode::Char('q') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
                 self.exit_code = Some(0);
             }
-            KeyCode::Char('n') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+            KeyCode::Char('h') if key.modifiers.contains(KeyModifiers::CONTROL) => {
                 self.toggle_active_area(ActiveArea::HistoryList);
+            }
+            KeyCode::Char('n') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.state.messages.lock().unwrap().clear();
+                self.text_area.clear();
             }
             _ if self.active_area == ActiveArea::UserInput => {
                 self.text_area.input(key);
