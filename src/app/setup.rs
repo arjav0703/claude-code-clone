@@ -68,6 +68,9 @@ impl App<'_> {
 
         let chat_id = format!("chat_{}", small_uid::SmallUid::new());
 
+        let mut list_state = ListState::default();
+        list_state.select_first();
+
         let state = {
             AppState {
                 messages: Arc::new(Mutex::new([].to_vec())),
@@ -77,7 +80,7 @@ impl App<'_> {
                 settings_state,
                 model,
                 chat_id,
-                history_list_state: ListState::default(),
+                history_list_state: list_state,
             }
         };
 

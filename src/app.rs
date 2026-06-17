@@ -43,6 +43,7 @@ pub enum ActiveArea {
     UserInput,
     LogsPopup,
     SettingsPopup,
+    HistoryList,
 }
 
 pub struct Settings<'a> {

@@ -1,9 +1,11 @@
+use std::fs;
+
 use async_openai::config::OpenAIConfig;
 use ratatui::crossterm::{
     self,
     event::{self, KeyCode, KeyModifiers},
 };
-use serde_json::json;
+use serde_json::{Value, json};
 
 use crate::{
     app::{ActiveArea, App, Model, SettingsField},
@@ -58,6 +60,41 @@ impl App<'_> {
             }
         }
 
+        if self.active_area == ActiveArea::HistoryList {
+            match key.code {
+                KeyCode::Up => {
+                    self.state.history_list_state.select_previous();
+                }
+                KeyCode::Down => {
+                    self.state.history_list_state.select_next();
+                }
+                KeyCode::Enter => {
+                    let history = self.get_history_list();
+                    log!(
+                        "Selected history entry: {:?}",
+                        history.get(self.state.history_list_state.selected().unwrap_or(0))
+                    );
+                    if let Some(entry) =
+                        history.get(self.state.history_list_state.selected().unwrap_or(0))
+                    {
+                        self.text_area.clear();
+                        let content =
+                            fs::read_to_string(format!("{entry}.json")).unwrap_or_default();
+
+                        log!("Loaded history entry content: {}", content);
+
+                        let parsed: Vec<Value> = serde_json::from_str(&content).unwrap_or_default();
+                        self.state.messages.lock().unwrap().clear();
+                        for msg in parsed {
+                            self.state.messages.lock().unwrap().push(msg);
+                        }
+                        self.active_area = ActiveArea::UserInput;
+                    }
+                }
+                _ => {}
+            }
+        }
+
         match key.code {
             KeyCode::Enter if key.modifiers == KeyModifiers::ALT => {
                 let app_state = &self.state;
@@ -82,6 +119,9 @@ impl App<'_> {
 
             KeyCode::Char('q') if key.modifiers.contains(event::KeyModifiers::CONTROL) => {
                 self.exit_code = Some(0);
+            }
+            KeyCode::Char('n') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.toggle_active_area(ActiveArea::HistoryList);
             }
             _ if self.active_area == ActiveArea::UserInput => {
                 self.text_area.input(key);
