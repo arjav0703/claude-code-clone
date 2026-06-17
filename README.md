@@ -23,6 +23,14 @@ cd claude-code-clone
 cargo run
 ```
 
+### Keybinds
+- `ALT + Enter`: Send message
+- `Ctrl + Q`: Quit
+- `Ctrl + N`: New chat
+- `Ctrl + H`: Acess previous Chat
+- `Ctrl + L`: Show Logs
+- `Ctrl + .`: Settings panel
+
 ### Configuration file (`config.toml`)
 1. Create a file called `config.toml` in the root directory of the project.
 2. Add the following content to the file, replacing the values with your own:
